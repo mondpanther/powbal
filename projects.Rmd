@@ -1,0 +1,20 @@
+---
+title: "Projects"
+description: |
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# POWBAL in India
+
+We are working with MIT's poverty actionlab on a pilot trial in India. What is the load balancing potential there? India is interesting not only because energy needs
+to become cleaner but also because the un-reliability of the power supply there could be a big drag on economic growth. Solutions like POWBAL could help to make it more
+reliable.
+More details  [here](powbal_india.html).
+
+<!--
+#(https://mondpanther.github.io/economemics.github.io/mindbody.html).
+-->

@@ -1,0 +1,35 @@
+{
+  "articles": [
+    {
+      "path": "about.html",
+      "title": "About",
+      "description": "Welcome to Powbal!\n",
+      "author": [],
+      "contents": "\r\nMaking energy consumption consumption cleaner by moving it in time.\r\n\r\n\r\n\r\n",
+      "last_modified": "2021-12-13T15:12:13+00:00"
+    },
+    {
+      "path": "index.html",
+      "title": "Latest",
+      "author": [],
+      "contents": "\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+      "last_modified": "2021-12-13T15:11:49+00:00"
+    },
+    {
+      "path": "powbal_india.html",
+      "title": "POWBAL India",
+      "description": "Welcome to Powbal!\n",
+      "author": [],
+      "contents": "\r\nWe are collaborating with MIT’s poverty action lab to examine how load balancing can be roll out in the Indian context. Besides helping to make energy cleaner this could also help to make energy more reliable. Making energy supply more reliable could have a big impact on economic activitiy in a country like India and therefore help to address poverty as well.\r\n\r\n\r\n\r\n",
+      "last_modified": "2021-12-13T15:09:25+00:00"
+    },
+    {
+      "path": "projects.html",
+      "title": "Projects",
+      "author": [],
+      "contents": "\r\nPOWBAL in India\r\nWe are working with MIT’s poverty actionlab on a pilot trial in India. What is the load balancing potential there? India is interesting not only because energy needs to become cleaner but also because the un-reliability of the power supply there could be a big drag on economic growth. Solutions like POWBAL could help to make it more reliable. More details here.\r\n\r\n\r\n\r\n\r\n",
+      "last_modified": "2021-12-13T15:09:26+00:00"
+    }
+  ],
+  "collections": ["posts/posts.json"]
+}

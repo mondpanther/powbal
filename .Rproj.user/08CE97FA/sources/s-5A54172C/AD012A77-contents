@@ -1,0 +1,19 @@
+---
+title: "About"
+description: |
+  Welcome to Powbal!
+  
+  
+---
+
+
+
+Making energy consumption consumption cleaner by moving it in time.
+  
+  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+
+```

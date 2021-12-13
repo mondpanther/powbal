@@ -1,0 +1,626 @@
+---
+title: "The relationship between hoaxism and covid infections"
+output: html_document
+css:    mondstyle.css
+editor_options: 
+  chunk_output_type: inline
+chunk_output_type: inline
+---
+
+**by [Julio Amador Diaz Lopez](https://www.imperial.ac.uk/people/j.amador)^[Imperial College Business School], [Ralf Martin](https://www.imperial.ac.uk/people/r.martin)^[Imperial College Business School  & Centre for Economic Perforamnce, LSE], Laure de Preux, Andre Veiga** 
+
+
+<!--html_preserve-->
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-3928947-4"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+  
+    gtag('config', 'UA-3928947-4');
+  </script>
+<!--/html_preserve-->
+
+
+Last update:  `r format(Sys.time(), '%B %d , %Y - %H:%M ')`
+
+```{r Notes,eval=FALSE,include=FALSE}
+#We are using this: https://www.earthdatascience.org/courses/earth-analytics/get-data-using-apis/use-twitter-api-r/
+
+#This is useful too: https://rtweet.info/
+
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(rtweet)
+library(tidytext)
+
+# plotting and pipes - tidyverse!
+library(ggplot2)
+library(dplyr)
+library(gdata)
+
+
+
+```
+
+
+
+# Introduction
+
+
+The coronavirus pandemic has changed everything overnight. Unfortunately, as the genetic sequence of the virus started to make its deadly journey through bodies around the world, in parallel a memetic sequence emerged in the minds of some people: the idea that covid19 pandemic is not real and a hoax. Indeed, the worry is that the two infections exist in a symbiotic relationship with one helping to advance the survival and spread of the other. Here we report on our ongoing efforts to map the spread of memetic infection using Twitter. Since March 23 we have been sampling tweets mentioning the terms “corona” and/or “covid”. Currently, we have collected   `r ntweets` million  tweets.
+
+
+Some emerging results include the following:
+
+- There is no sign that hoax meme has run its course. Over our admittedly short sample period of about two weeks the overal level of hoaxism remained stable.
+- There is some evidence that Donald Trump has to answer for the hoax meme. Hoax believers are particularly obsessed with him.
+- There is evidence that believe in Hoax led to more higher covid cases than necessary. Across US states we find a strong correlation between hoax believer rates and covid cases. 
+- We have evidence that is consistent with the idea that interaction between population density and hoaxism is a major factor in explaining the severety of the pandemic.
+- We have to be careful with causal interpretations but the numbers would imply that US covid cases could be about 20% lower in absence of hoaxism.
+
+
+
+
+# Hoaxism over time
+
+How bad is the hoax infection and is it getting better or worse? To identify tweeters believing in the hoax (or promoting the hoax idea) we look for tweets with one of the following hastags:
+
+- "#hoax"
+- "#coronahoax"
+- "#covidhoax"
+
+
+Using hashtags instead of string searches of the same terms provides a good distinction between tweets who display support for hoaxsim vs tweets criticising hoaxism. Note that this is likely a conservative way of counting hoaxist tweets and in reality a larger fraction of tweets are from people supporting hoaxist ideas.
+
+Below is a time series plot of the share of hoaxist tweets over our sample period.^[Data is
+[here](https://mondpanther.github.io/economemics.github.io/data/hoaxshare_over_time.csv)]]
+ we report separate series for the Us and UK. Assigning location to tweets is notoriously difficult as most users have switch off detailed location tracking. In the figure below we base location on the analysis of a free text field where users can write something about their whereabouts. In many cases this refers to known areas although the detail varies (e.g. London, UK vs the Universe). Often it also involves phantasy locations (e.g. Walhalla). Hence, our "other" category might include tweeters from either the UK or Us who have chosen not to reveal their location.
+
+Note that towards the begining of the sample period the share of hoax tweets in all covid related tweets is less than 0.5%. However, the weekend  around the 28th of March saw a major outbreak of Hoaxism that was particularly bad in the UK. This has subsided somewhat come March 30. The whole sample trend would suggest that hoaxism is fairly stable and not subsiding, although there seems to be a declining trend for the last couple of days.
+
+
+```{r tsplot,echo=FALSE}
+
+scomb=scomb%>% group_by(country) %>% arrange(country,date) %>% mutate(cumtweets=cumsum(tweets),cumigtweets=cumsum(igtweets),cumhoaxsh=cumigtweets/cumtweets,hoaxsh=igtweets/tweets)
+
+
+names(scomb)
+
+
+library(lubridate)
+start.date = ymd_hms("2020-01-06 00:00:00")
+end.date   = as_datetime(now()+days(7)) #ymd_hms("2020-04-02 01:00:00")
+  
+breaksweeks = seq(date(start.date), date(end.date), "1 week")
+scomb  = scomb %>% mutate(week=cut(date, breaks=breaksweeks)) 
+
+scombw=scomb %>% filter(is.na(week)==FALSE) %>% group_by(country,week)%>% 
+         summarise_at(vars(tweets,igtweets), sum, na.rm = TRUE)  %>% mutate(hoaxsh=igtweets/tweets, week=ymd(as.character(week))) %>% ungroup()
+  
+
+
+
+```
+
+
+
+
+
+```{r statelevel,echo=FALSE}
+#library(lfe)
+
+stats=read.csv("https://www.dropbox.com/s/8w4zbg40y84pnqk/statslong.csv?dl=1")
+
+https://www.dropbox.com/s/8w4zbg40y84pnqk/statslong.csv?dl=0
+stats=stats%>%mutate(ln1PcasesPC=log(1+casesPC), pop=pop/1000, hoaxshXdensity=(hoaxsh)*(density-mean(density)),tweetsPCXdensity=(tweetsPC)*(density-mean(density)))
+
+
+statsbyd=readRDS("../results/statsbydlong.Rda")
+statsbyd=statsbyd %>% select(state,date,cases,tweets,density,hoax,pop,deaths)
+names(statsbyd)
+## fill in missing days
+  ii=statsbyd%>% ungroup() %>% select(state) %>% distinct()
+  dd=statsbyd%>% ungroup() %>% select(date) %>% distinct()
+  statsbyd=ii%>%merge(dd)  %>% merge(statsbyd,by=c("state","date"),all.x = TRUE)
+  
+  
+#statsbyd=statsbyd%>%filter(as.character(date)>"2020-03-26")
+
+
+#statsbyd=statsbyd%>%mutate_at(vars(hoaxsh,casesPC,tweetsPC,deathsPC), ~replace(., is.na(.), 0)) %>%
+statsbyd=statsbyd%>%
+        mutate_at(vars(contains("deaths")|contains("tweets")| contains("hoax") | contains("cases")),
+                  ~replace(., is.na(.), 0))  %>%
+        mutate_at(vars(contains("deaths")|contains("tweets")| contains("hoax") | contains("cases")),
+                  ~replace(., is.infinite(.), 0))
+
+
+
+
+# deal with the static variables
+statsbyd=statsbyd%>% ungroup() %>% mutate(mdensity=mean(density,na.rm = TRUE)) %>% 
+         group_by(state)%>%
+         mutate(density=mean(density,na.rm = TRUE),pop=mean(pop,na.rm = TRUE),one=1)
+
+names(statsbyd)
+
+
+statsbyd = statsbyd %>%    mutate(cumhoax=cumsum(hoax),
+                                  cumtweets=cumsum(tweets),
+                                  pop=pop/1000,
+                                  
+                                  casesPC=cases/pop,
+                                  deathsPC=deaths/pop,
+                                  tweetsPC=cumtweets/pop,
+                                  
+                                  hoaxsh= ifelse(cumtweets>0,cumhoax/cumtweets*100,0)) %>%
+                            mutate(tweetsPCXdensity=tweetsPC*(density-mdensity),
+                                   hoaxshXdensity=hoaxsh*(density-mdensity)
+                                )
+
+
+## further derived variables
+#statsbyd=statsbyd%>%mutate(pop=pop/1000, ln1PcasesPC=log(1+casesPC),hoaxshXdensity=(hoaxsh) *(density-mdensity),tweetsPCXdensity=(tweetsPC) * (density-mdensity) )
+
+
+### Make it weekly
+  library(lubridate)
+  start.date = ymd_hms("2020-01-06 00:00:00")
+  end.date   = as_datetime(now()+days(7)) #ymd_hms("2020-04-02 01:00:00")
+  
+  breaksweeks = seq(date(start.date), date(end.date), "1 week")
+  statsbyd['week'] = cut(statsbyd$date, breaks=breaksweeks)
+  statsbyw=statsbyd %>% group_by(state,week)%>% 
+       summarise_at(vars(contains("cumtweets") | 
+                         contains("cumhoax")   | 
+                         contains("cases")     | 
+                         contains("deaths")    | 
+                         contains("pop")       | 
+                         contains("density")), max, na.rm = TRUE) 
+  statsbyw2=statsbyd %>% group_by(state,week)%>% 
+       summarise_at(vars(tweets,hoax), sum, na.rm = TRUE) 
+  statsbyw=statsbyw%>% merge(statsbyw2,by=c("state","week"))
+  #statsbyw = statsbyw %>%    group_by(state)  %>% 
+  #           mutate(mdensity=mean(mdensity,na.rm = TRUE), density=mean(density,na.rm = TRUE),pop=mean(pop,na.rm = TRUE))
+
+
+  statsbyw = statsbyw %>%    
+             mutate( hoaxsh=ifelse(cumtweets>0, 
+                                   cumhoax/cumtweets*100,0),
+                     tweetsPC=cumtweets/pop ) %>%   
+             mutate(tweetsPCXdensity=tweetsPC*(density-mdensity)/1,
+                    hoaxshXdensity=hoaxsh*(density-mdensity)/1)
+```
+
+
+```{r regressions}
+#statsbyd <- statsbyd %>% arrange(., state, date) %>%l
+#  group_by(state) %>%
+#  mutate(dayx = 1:n())
+
+
+library(pglm)
+library(readstata13)
+library(lmtest)
+
+
+
+  
+  nn=statsbyw %>% filter(as.character(week)<"2020-05-01")
+  
+
+# Let's do regressions
+  
+  
+  #+ hoaxshXdensity 
+
+  
+#nn= nn%>%group_by(state)%>%arrange(state,week)%>%mutate(n=1:n(), week=as.character(week))    %>%  mutate(n=ifelse(n<=8,0,n))
+
+
+library(haven)
+write_dta(nn,"test.dta")
+
+
+
+#r6d <- pglm(deathsPC  ~  hoaxsh +  tweetsPC  + hoaxshXdensity  + tweetsPCXdensity  + factor(nn),  family = #poisson(link=log),
+#              data = nn, effect = "individual", model="within", index = "state")
+#summary(r6d)
+
+
+r6 <- plm(casesPC  ~  hoaxsh  +  tweetsPC  + hoaxshXdensity  + tweetsPCXdensity  +  factor(week) , 
+              data = nn, model="within", index = c("state","week"))
+summary(r6)
+
+################################
+
+r6 <- lm(casesPC  ~  hoaxsh +  tweetsPC  + hoaxshXdensity  + tweetsPCXdensity +  factor(week) +factor(state), 
+              data = statsbyw)
+summary(r6)
+
+
+
+
+
+library(plm)
+z1 <- pgmm(casesPC ~  lag(casesPC, 1:1)     
+           |   lag(casesPC, 2:10)       , 
+            data = statsbyw, effect = "twoways",model="onestep",index(state,week)); summary(z1)
+
+
+cov(statsbyw %>% ungroup()%>% select(tweetsPC,hoaxsh, tweetsPCXdensity,hoaxshXdensity))
+cov(statsbyd %>% ungroup()%>% select(tweetsPC,hoaxsh, tweetsPCXdensity,hoaxshXdensity))
+
+
+r6 <- pgmm(casesPC ~ lag(casesPC,2:2)  +   lag(hoaxsh,2:2) + lag(tweetsPC,2:2)+ lag(hoaxshXdensity,2:2) +  lag(tweetsPCXdensity,2:2)
+           |  lag(casesPC,2:5) + lag(hoaxsh,2:5) + lag(tweetsPC,2:5)+ lag(hoaxshXdensity,2:5) +  lag(tweetsPCXdensity,2:5), 
+          data = nn, effect = "twoways", model = "twosteps",index(state,week)); summary(r6)
+
+
+
+r6 <- pgmm(deathsPC ~ lag(deathsPC,2:2)  +   lag(hoaxsh,2:2) + lag(tweetsPC,2:2)+ lag(hoaxshXdensity,2:2) +  lag(tweetsPCXdensity,2:2)
+           |  lag(casesPC,2:5) + lag(hoaxsh,2:5) + lag(tweetsPC,2:5)+ lag(hoaxshXdensity,2:5) +  lag(tweetsPCXdensity,2:5), 
+          data = nn, effect = "twoways", model = "twosteps",index(state,week)); summary(r6)
+
+
+
+struc=1:1
+ivstruc=2:5
+r6 <- pgmm(casesPC ~  lag(casesPC, struc)    + lag(hoaxsh,struc) + 
+             lag(tweetsPC,struc)+ 
+             lag(hoaxshXdensity,struc) +  
+             lag(tweetsPCXdensity,struc)|
+             lag(casesPC, 2:5) + 
+             lag(hoaxsh,ivstruc) + 
+             lag(tweetsPC,ivstruc)+
+             lag(hoaxshXdensity,ivstruc) +  
+             lag(tweetsPCXdensity,ivstruc), 
+          data = nn, effect = "twoways", model = "twosteps",index(state,week)); summary(r6)
+
+
+
+
+struc=1:1
+ivstruc=1:5
+r6 <- pgmm(deathsPC ~  lag(deathsPC, 2:2)    + lag(hoaxsh,struc) + 
+             lag(tweetsPC,struc)+ 
+             lag(hoaxshXdensity,struc) +  
+             lag(tweetsPCXdensity,struc)|
+             lag(deathsPC, 2:5) + 
+             lag(hoaxsh,ivstruc) + 
+             lag(tweetsPC,ivstruc)+
+             lag(hoaxshXdensity,ivstruc) +  
+             lag(tweetsPCXdensity,ivstruc), 
+          data = nn, effect = "twoways", model = "twosteps",index(state,week)); summary(r6)
+
+
+
+
+r6 <- pgmm(deathsPC ~  lag(deathsPC, 1)    +
+                       lag(hoaxsh,0) + lag(tweetsPC,0)+ lag(hoaxshXdensity,0:0) +  lag(tweetsPCXdensity,0:0)
+           |  lag(deathsPC, 2:3) + lag(hoaxsh,0:2) + lag(tweetsPC,0:2)+ lag(hoaxshXdensity,0:2) +  lag(tweetsPCXdensity,1:2), 
+          data = statsbyw, effect = "twoways", model = "twosteps",index(state,week)); summary(r6)
+
+
+data("EmplUK", package = "plm")
+
+## Arellano and Bond (1991), table 4 col. b 
+z1 <- pgmm(log(emp) ~ lag(log(emp), 1:2) + lag(log(wage), 0:1)
+           + log(capital) + lag(log(output), 0:1) | lag(log(emp), 2:99),
+            data = EmplUK, effect = "twoways", model = "twosteps")
+summary(z1, robust = FALSE)
+
+
+
+
+names(nn)
+
+nn=mutate(nn,L1casesPC=L1cases/pop,L1deathsPC=L1deaths/pop)
+
+r6=lm((casesPC)~hoaxsh + tweetsPC + hoaxshXdensity + tweetsPCXdensity   + factor(state) + factor(week), nn)
+summary(r6)
+
+
+
+
+r6d=lm((deathsPC)~hoaxsh+ L1desthsPC + tweetsPC + hoaxshXdensity + tweetsPCXdensity   + factor(state) + factor(week), nn)
+summary(r6d)
+
+
+r7=lm(casesPC~hoaxsh+tweetsPC +  hoaxshXdensity + tweetsPCXdensity   + factor(state)+factor(week), nn %>% filter(state!="New York") )
+summary(r7)
+
+r7d=lm(deathsPC~hoaxsh+tweetsPC +  hoaxshXdensity + tweetsPCXdensity   + factor(state)+factor(week), nn %>% filter(state!="New York") )
+summary(r7d)
+
+#r8=lm(deathsPC~casesPC+casesPC:density+ tweetsPC:density+hoaxsh:density+hoaxsh+tweetsPC+factor(state)+factor(date), statsbyd )
+
+#r6=(felm((casesPC)~hoaxsh*density+tweetsPC*density+factor(state)+factor(date)|0|0|state,data=statsbyd  ))
+#ols1 <- felm(y ~ x + z|0|0|firmid, data = petersen)
+#summary(r4)
+
+
+#summary(r6)
+#summary(r8)
+#summary(r6,cluster=c("fstate"))
+
+#summary(lm((casesPC)~hoaxsh:density+tweetsPC:density+hoaxsh+tweetsPC+factor(state)+factor(date), statsbyd  ))
+
+
+#summary(lm((casesPC)~hoaxsh*density+tweetsPC*density+factor(date), statsbyd  ))
+
+
+#summary(lm((casesPC)~hoaxsh*density+tweetsPC*density, stats  ))
+
+
+
+summary(r6)
+cf=nn %>% filter(as.character(week)==max(as.character(week))) %>% 
+        mutate(saved = (r6$coefficients[["hoaxsh"]] + r6$coefficients[["hoaxshXdensity"]] * (density-mdensity))     * hoaxsh   *  pop)
+
+
+
+cf=statsbyw %>% filter(as.character(week)==max(as.character(week))) %>% 
+        mutate(saved = (r6$coefficients[["hoaxsh"]] + r6$coefficients[["hoaxshXdensity"]] * 
+                          (density-mdensity))     * hoaxsh   *  pop)
+
+
+
+cf=nn %>% filter(as.character(week)==max(as.character(week))) %>% 
+        mutate(saved = (r6$coefficients[[1]][["lag(hoaxsh, struc)"]] + r6$coefficients[[1]][["lag(hoaxshXdensity, struc)"]] * (density-mdensity))     * hoaxsh   *  pop)
+
+lag(hoaxsh,1:1)
+
+cf=cf %>% mutate(savedd=(r6d$coefficients[["hoaxsh"]] + r6d$coefficients[["hoaxshXdensity"]] * (density-mdensity ))   * hoaxsh  *  pop )
+ 
+
+#cf=cf%>% mutate(saved=ifelse(saved>cases, cases,saved),savedd=ifelse(savedd>deaths, deaths,savedd))  # remove over shoots
+
+summary(cf$cases-cf$saved)
+
+#look=stats%>% select(c(hoaxsh,saved,casesPC))
+#View(look)
+
+
+#stats=stats%>%mutate(hoaxsh2=hoaxsh^2,density2=density^2)
+
+saved=base::sum(cf$saved)  
+saved
+savedd=base::sum(cf$savedd)  
+savedd
+alld=sum(stats$deaths)
+all=base::sum(stats$cases)
+
+saved/all
+savedd/alld
+
+
+
+#summary(lm(casesPC~hoaxsh+density,stats))
+#summary(lm(casesPC~hoaxsh*density+tweetsPC,stats))
+#summary(lm(casesPC~hoaxsh*density+tweetsPC+pop,stats))
+#summary(lm(casesPC~hoaxsh*density+tweetsPC+pop,stats))
+
+
+#summary(lm(log(casesPC)~hoaxsh*density+tweetsPC+pop,stats))
+#summary(lm(log(casesPC)~hoaxsh*density+tweetsPC*density+pop,stats))
+#summary(lm(casesPC~density+tweetsPC,stats))
+#summary(lm(casesPC~hoaxsh*density+pop+tweetsPC+density2+hoaxsh2,stats%>%filter(state!="New York")))
+#summary(lm(casesPC~hoaxsh+density+pop+tweetsPC,stats%>%filter(state!="New York")))
+
+#summary(lm(casesPC~hoaxsh+density+tweetsPC,stats%>%filter(state!="New York")))
+
+
+# Write to github repo
+
+# save to github
+write.csv(stats,"./data/US_scatter_long.csv")
+write.csv(statsbyd,"./data/US_timeseries_long.csv")
+
+
+
+```
+
+<br/><br/>
+
+
+
+```{r,  echo=FALSE}
+library(ggrepel)
+ggplot(stats) + 
+    aes(y=casesPC, x=hoaxsh,label=state) +
+    geom_point() +geom_text_repel(cex=2)+
+    stat_smooth(method = "lm", se = FALSE)+theme_minimal()+ylab("Covid Cases per 1000")+xlab("Share of hoax tweets in %")
+
+
+```
+
+<br/><br/>
+
+An alternative explanation for the striking infection rates in New York is the relative density of New York. That's why we also examine the relationship between infection rates and density (in people per square mile). Indeed there is a positive relationship as well. But New York seems to be more of an outlier in terms of density. 
+Indeed one potential hypothesis the two figures combined suggests is that there might be an interaction effect between hoaxism and density. Take for instance Alaska, which has the second highest rates of hoaxism, but much lower infection rates than New York. Of course it's also the least densiley populated state. On the other hand: consider New Jersey which is actually more dense than New York but has much lower rates of infection. It turns out that hoaxism is also less prevalent there.
+
+
+
+<br/><br/>
+
+
+```{r,  echo=FALSE}
+library(ggrepel)
+ggplot(stats) + 
+    aes(y=casesPC, x=density,label=state) +
+    geom_point() +geom_text_repel(cex=2)+
+    stat_smooth(method = "lm", se = FALSE)+theme_minimal()+ylab("Covid Cases per 1000")+xlab("Density [People per square mile]")
+
+
+```
+
+
+<br/><br/>
+
+
+To explore this more below we also undertake regression analysis.^[Underlying data is [here](https://mondpanther.github.io/memonomics.github.io/data/US_timeseries_long.csv).] The Table below shows that:
+
+- Hoaxsim is indeed significantly and positively related to hoaxism (Column 1). The coefficient implies that a 1 percentage point higher hoaxism level is associated with 1.38 extra covid patients per 1000 citizens.
+
+- This is result is highly robust to the inclusion of further controls such as population density, population size and covid tweet intensity (covid related tweets per 1000 people) in column 2. 
+
+- The hoaxism and density interaction hypothesis is confirmed in column 3 where we include the interaction of both variables as an additional regression coefficient (as well as the interaction of covid tweet intensity with density as additional control)
+
+- In column 4, we identify the model from daily data rather than a cross sectional variation of the latest available period (day). This allows us to control to include state as well as day control (density is no longer separately identified as it becomes a fixed state level characterstics). Hence we implicity control for all fixed state characteristics that could might be confounding our estimate. This preserves our qualitative conclusions alhtough the estimates coefficients become lower.
+
+- In column 5 we repeat the exercise while dropping all observations from New York. This has little impact on the findings related to hoaxism.
+
+We have to be cautious with causal claims at this stage. Our results could be contingent on our  simple model specification or crude aggregation (e.g. we don't take into account that New York state consists of the metropolitian area of New York as well as rarther rural parts, although as we saw in column 5, the results are not contingent on New York). Still, to understand if the results are not only statistically significant but also quantitatively meaningful it is useful to ask what - if taken at face value - the impact of haoxism would be. Using the estimates from column 4 which we consider our most reliable at this stage would imply that without hoaxism  we had  `r format(round(saved,0),scientific=FALSE) ` covid cases less (of a total of `r format(all,scientific=FALSE)`), as of `r max(stats$date)`. Clearly, this is substantial.
+
+<br/><br/>
+
+
+```{r  message=FALSE, results='asis',echo=FALSE} 
+library(stargazer)
+
+cns=names(coef(r6)) 
+cns=cns[ grepl( "factor", cns)==TRUE]
+
+cns=as.vector(cns)
+
+cns=c("factor(state)Arkansas" ,"Population")
+
+#r6=r6$lm_res
+clabels = c("Hoax Tweets Share", "Population density",  "Tweets per capita",    "Hoax X Density" ,"Tweets X Density")
+
+#cns=c("Constant","Population")
+stargazer(r1,  r2, r4 ,r6,r7, type = "html",  omit=c("state","date","Constant")  ,
+          covariate.labels =clabels,
+          df = FALSE,
+          dep.var.labels   = "Covid19 Cases per capita",
+                  add.lines = list(
+        c("States Controls", "No", "No", "No","Yes", "Yes"),
+        c("Day Controls", "No", "No", "No","Yes", "Yes"),
+        c("Sample", "Last Day", "Last Day", "Last Day","Daily", "NY dropped")
+          ))
+
+```
+ 
+<br/><br/>
+
+
+
+
+
+```{r, eval=FALSE,echo=FALSE}
+
+nn=mutate(statsbyw,date=ymd(week),)
+ggplot(nn%>%filter(state=="New York" | state=="New Jersey"  | state=="California" | state=="Alaska"), aes(x = date,y=hoaxsh,color=state  )  )+geom_line()  + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+statts=function(sname){
+  ggplot(statsbyd%>%filter(state==sname), aes(x = date,y=hoaxsh,color="Hoax Share in %"  )  )+geom_line() +
+       geom_line(aes(y=deathsPC/10,color="Cumulative Deaths per 1000")) +
+       geom_line(aes(y=casesPC/10,color="Cumulative Cases per 1000")) + theme_minimal() + xlab("Time") +
+       ylab("Cumulative Share of hoax tweets [%]") + 
+       scale_y_continuous(sec.axis = sec_axis(~.*10, name = "Cases/Deaths per 1000"))
+}
+statts("New York")
+statts("New Jersey")
+statts("Alaska")
+statts("California")
+
+ggplot(nn%>%filter(state=="New Jersey"), aes(x = date,y=hoaxsh,color=state  )  )+geom_line() +
+     geom_line(aes(y=deathsPC/10),color="blue") +
+     geom_line(aes(y=casesPC/10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+
+ggplot(nn%>%filter(state=="Michigan"), aes(x = date,y=hoaxsh,color=state  )  )+geom_line() +
+     geom_line(aes(y=deathsPC/10),color="blue") +
+     geom_line(aes(y=casesPC/10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+
+ggplot(nn%>%filter(state=="California"), aes(x = date,y=hoaxsh*100,color=state  )  )+geom_line() +
+     geom_line(aes(y=deathsPC/10),color="blue") +
+     geom_line(aes(y=casesPC/10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+
+ggplot(nn%>%filter(state=="Louisiana"), aes(x = date,y=hoaxsh*100,color=state  )  )+geom_line() +
+     geom_line(aes(y=deathsPC/10),color="blue") +
+     geom_line(aes(y=casesPC/10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+ggplot(nn%>%filter(state=="Massachusetts"), aes(x = date,y=hoaxsh*100,color=state  )  )+geom_line() +
+     geom_line(aes(y=deathsPC/10),color="blue") +
+     geom_line(aes(y=casesPC/10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+
+ggplot(nn%>%filter(state=="New Jersey"), aes(x = date,y=hoaxsh*100,color=state  )  )+geom_line() +geom_line(aes(y=casesPC*10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+ggplot(nn%>%filter(state=="California"), aes(x = date,y=hoaxsh*100,color=state  )  )+geom_line() +geom_line(aes(y=casesPC*10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+ggplot(nn%>%filter(state=="Rhode Island"), aes(x = date,y=hoaxsh*100,color=state  )  )+geom_line() +geom_line(aes(y=casesPC*10),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+ggplot(nn%>%filter(state=="Alaska"), aes(x = date,y=hoaxsh*100,color=state  )  )+geom_line() +geom_line(aes(y=casesPC*100),color="blue") + theme_minimal() + xlab("Time") +
+     ylab("Cumulative Share of hoax tweets [%]")
+
+
+
+df=statsbyd %>% filter(state=="New York" | state=="New Jersey" |state=="Florida" | state=="Alaska" | state=="California")
+tsplot=ggplot(df , aes(x = date,y=hoaxsh,color=state  )  )+geom_point() +  geom_line() + theme_minimal() + xlab("Time") +ylab("Share of hoax tweets [%]")
+tsplot
+
+
+df=statsbyd %>% filter(state=="New York" | state=="New Jersey" |state=="Florida" | state=="Alaska" | state=="California")
+tsplot=ggplot(df , aes(x = date,y=DcasesPC,color=state  )  )+geom_point() +  geom_line() + theme_minimal() + xlab("Time") +ylab("Extra cases PC")
+tsplot
+
+
+df=statsbyd %>% filter(state=="New York" )
+tsplot=ggplot(df , aes(x = date,y=casesPC,color=state  )  ) +  geom_line()+geom_line(aes(x = date,y=hoaxsh,color=state  ) ) + theme_minimal() + xlab("Time") +ylab("Extra cases PC")
+tsplot
+
+
+df=statsbyd %>% filter(state=="New York" )
+tsplot=ggplot(df , aes(x = date,y=casesPC,color=state  )  ) +  geom_line()+geom_line(aes(x = date,y=tweetsPC,color=state  ) ) + theme_minimal() + xlab("Time") +ylab("Extra cases PC")
+tsplot
+
+
+
+df=statsbyd %>% filter(state=="Louisiana" )
+tsplot=ggplot(df , aes(x = date,y=casesPC,color=state  )  ) +  geom_line()+geom_line(aes(x = date,y=hoaxsh,color="blue"  ) ) + theme_minimal() + xlab("Time") +ylab("Extra cases PC")
+tsplot
+
+
+
+
+df=statsbyd %>% filter(state=="Alaska" )
+tsplot=ggplot(df , aes(x = date,y=casesPC,color=state  )  ) +  geom_line()+geom_line(aes(x = date,y=hoaxsh,color="blue"  ) ) + theme_minimal() + xlab("Time") +ylab("Extra cases PC")
+tsplot
+
+df=statsbyd %>% filter(state=="New Jersey" )
+tsplot=ggplot(df , aes(x = date,y=casesPC,color=state  )  ) +  geom_line()+geom_line(aes(x = date,y=hoaxsh,color="blue"  ) ) + theme_minimal() + xlab("Time") +ylab("Extra cases PC")
+tsplot
+
+
+
+
+```
+
+

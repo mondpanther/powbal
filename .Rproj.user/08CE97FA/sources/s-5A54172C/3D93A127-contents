@@ -1,0 +1,19 @@
+name: "powbal"
+title: "POWBAL"
+description: |
+  Making energy consumption cleaner
+output_dir: "docs"
+include: ["data"]
+navbar:
+  right:
+    - text: "Home"
+      href: index.html
+    - text: "About"
+      href: about.html
+    - text: "Projects"
+      href: projects.html
+base_url: https://mondpanther.github.io/powbal/      
+output:
+  distill::distill_article:
+    #theme: flatly
+    #css: memonomics.css

@@ -1,0 +1,19 @@
+---
+title: "Welcome to POWBAL"
+description: |
+  We are a team of researchers exploring behavioural changes that make power consumption cleaner.
+output:
+  distill::distill_article:
+    self_contained: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# Learn more about creating blogs with Distill at:
+# https://rstudio.github.io/distill/blog.html
+
+```
+
+
+

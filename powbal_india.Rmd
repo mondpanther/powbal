@@ -1,0 +1,19 @@
+---
+title: "POWBAL India"
+description: |
+  Welcome to Powbal!
+  
+  
+---
+
+
+We are collaborating with MIT's poverty action lab to examine how load balancing can be roll out in the Indian context.
+Besides helping to make energy cleaner this could also help to make energy more reliable. Making energy supply more reliable could have a big impact on economic activitiy in a country like India and therefore help to address poverty as well.
+  
+  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+
+```
