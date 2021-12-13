@@ -1,7 +1,7 @@
 {
     "id": "730CA40A",
-    "path": "C:/Users/rmart/github/powbal/index.Rmd",
-    "project_path": "index.Rmd",
+    "path": "C:/Users/rmart/github/powbal/faq.Rmd",
+    "project_path": "faq.Rmd",
     "type": "r_markdown",
     "hash": "0",
     "contents": "",
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "10,20",
+        "cursorPosition": "28,3",
         "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1639408304,
+    "lastKnownWriteTime": 1639414500,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1639408304516,
+    "last_content_update": 1639414500397,
     "read_only": false,
     "read_only_alternatives": []
 }
